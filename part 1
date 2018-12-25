@@ -1,0 +1,81 @@
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QRadioButton, QLabel, QLineEdit
+from PyQt5.QtGui import QPixmap
+from PIL import Image
+
+class Picture(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.current = "first.jpg"
+        self.initUI()
+
+
+    def initUI(self):
+        self.setGeometry(300, 300, 300, 300)
+        self.setWindowTitle('Редактор изображений')
+
+
+        self.pixmap = QPixmap(self.current)
+        self.image_label = QLabel(self)
+        self.image_label.move(80, 60)
+        self.image_label.resize(250, 250)
+        self.image_label.setPixmap(self.pixmap)
+
+
+        self.channel = [QPushButton(self) for i in range(4)]
+        self.channel[0].setText('R')
+        self.channel[1].setText('G')
+        self.channel[2].setText('B')
+        self.channel[3].setText('Original')
+        for i in range(4):
+            self.channel[i].move(20, 30 * i)
+            self.channel[i].clicked.connect(self.run())
+
+        self.rotate_btn = QPushButton('вправо',self)
+        self.rotate_btn.clicked.connect(self.rotate)
+        self.rotate_btn.move(230, 320)
+
+
+        self.rotate_btn = QPushButton('влево',self)
+        self.rotate_btn.clicked.connect(self.rotate)
+        self.rotate_btn.move(90, 320)
+
+
+    def run(self):
+        im = Image.open("first.jpg")
+        pixels = im.load()
+        x, y = im.size
+        for i in range(x):
+            for j in range(y):
+                r, g, b = pixels[i, j]
+                if(self.sender().text() == 'R'):
+                    pixels[i, j] = r, 0, 0
+                elif(self.sender().text() == 'G'):
+                    pixels[i, j] = 0, g, 0
+                elif(self.sender().text() == 'B'):
+                    pixels[i, j] = 0, 0, b
+                else:
+                    pass
+        im.save("second.jpg")
+        self.pixmap.load("second.jpg")
+        self.current = "second.jpg"
+        self.image.setPixmap(self.pixmap)
+                
+
+    def rotate(self):
+      im = Image.open(self.current)
+      if(self.sender().text() == "вправо"):
+          degree = -90
+      else:
+          degree = 90
+      im2 = im.rotate(degree, expand = True)
+      im2.save("second.jpg")
+      self.pixmap.load("second.jpg")
+      self.current = "second.jpg"
+      self.image.setPixmap(self.pixmap)
+      
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = Picture()
+    ex.show()
+    sys.exit(app.exec())
