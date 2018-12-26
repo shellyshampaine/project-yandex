@@ -44,12 +44,7 @@ PREVIEW_PEN = QPen(QColor(0xff, 0xff, 0xff), 1, Qt.SolidLine)
 
 
 def build_font(config):
-    """
-    Construct a complete font from the configuration options
-    :param self:
-    :param config:
-    :return: QFont
-    """
+
     font = config['font']
     font.setPointSize(config['fontsize'])
     font.setBold(config['bold'])
@@ -68,12 +63,9 @@ class Canvas(QLabel):
     primary_color_updated = pyqtSignal(str)
     secondary_color_updated = pyqtSignal(str)
 
-    # Store configuration settings, including pen width, fonts etc.
     config = {
-        # Drawing options.
         'size': 1,
         'fill': True,
-        # Font options.
         'font': QFont('Times'),
         'fontsize': 12,
         'bold': False,
@@ -95,10 +87,8 @@ class Canvas(QLabel):
         self.reset()
 
     def reset(self):
-        # Create the pixmap for display.
         self.setPixmap(QPixmap(*CANVAS_DIMENSIONS))
 
-        # Clear the canvas.
         self.pixmap().fill(self.background_color)
 
     def set_primary_color(self, hex):
@@ -111,9 +101,7 @@ class Canvas(QLabel):
         self.config[key] = value
 
     def set_mode(self, mode):
-        # Clean up active timer animations.
         self.timer_cleanup()
-        # Reset mode-specific vars (all)
         self.active_shape_fn = None
         self.active_shape_args = ()
 
@@ -132,7 +120,6 @@ class Canvas(QLabel):
 
         self.dash_offset = 0
         self.locked = False
-        # Apply the mode
         self.mode = mode
 
     def reset_mode(self):
@@ -144,12 +131,9 @@ class Canvas(QLabel):
 
     def timer_cleanup(self):
         if self.timer_event:
-            # Stop the timer, then trigger cleanup.
             timer_event = self.timer_event
             self.timer_event = None
             timer_event(final=True)
-
-    # Mouse events.
 
     def mousePressEvent(self, e):
         fn = getattr(self, "%s_mousePressEvent" % self.mode, None)
@@ -171,8 +155,6 @@ class Canvas(QLabel):
         if fn:
             return fn(e)
 
-    # Generic events (shared by brush-like tools)
-
     def generic_mousePressEvent(self, e):
         self.last_pos = e.pos()
 
@@ -184,9 +166,6 @@ class Canvas(QLabel):
     def generic_mouseReleaseEvent(self, e):
         self.last_pos = None
 
-    # Mode-specific events.
-
-    # Select polygon events
 
     def selectpoly_mousePressEvent(self, e):
         if not self.locked or e.button == Qt.RightButton:
@@ -206,34 +185,23 @@ class Canvas(QLabel):
         self.locked = True
 
     def selectpoly_copy(self):
-        """
-        Copy a polygon region from the current image, returning it.
-        Create a mask for the selected area, and use it to blank
-        out non-selected regions. Then get the bounding rect of the
-        selection and crop to produce the smallest possible image.
-        :return: QPixmap of the copied region.
-        """
         self.timer_cleanup()
 
         pixmap = self.pixmap().copy()
         bitmap = QBitmap(*CANVAS_DIMENSIONS)
-        bitmap.clear()  # Starts with random data visible.
+        bitmap.clear()  
 
         p = QPainter(bitmap)
-        # Construct a mask where the user selected area will be kept, the rest removed from the image is transparent.
         userpoly = QPolygon(self.history_pos + [self.current_pos])
         p.setPen(QPen(Qt.color1))
-        p.setBrush(QBrush(Qt.color1))  # Solid color, Qt.color1 == bit on.
+        p.setBrush(QBrush(Qt.color1))  
         p.drawPolygon(userpoly)
         p.end()
 
-        # Set our created mask on the image.
         pixmap.setMask(bitmap)
 
-        # Calculate the bounding rect and return a copy of that region.
         return pixmap.copy(userpoly.boundingRect())
 
-    # Select rectangle events
 
     def selectrect_mousePressEvent(self, e):
         self.active_shape_fn = 'drawRect'
@@ -252,14 +220,9 @@ class Canvas(QLabel):
         self.locked = True
 
     def selectrect_copy(self):
-        """
-        Copy a rectangle region of the current image, returning it.
-        :return: QPixmap of the copied region.
-        """
         self.timer_cleanup()
         return self.pixmap().copy(QRect(self.origin_pos, self.current_pos))
 
-    # Eraser events
 
     def eraser_mousePressEvent(self, e):
         self.generic_mousePressEvent(e)
@@ -276,7 +239,6 @@ class Canvas(QLabel):
     def eraser_mouseReleaseEvent(self, e):
         self.generic_mouseReleaseEvent(e)
 
-    # Stamp (pie) events
 
     def stamp_mousePressEvent(self, e):
         p = QPainter(self.pixmap())
@@ -284,7 +246,7 @@ class Canvas(QLabel):
         p.drawPixmap(e.x() - stamp.width() // 2, e.y() - stamp.height() // 2, stamp)
         self.update()
 
-    # Pen events
+  
 
     def pen_mousePressEvent(self, e):
         self.generic_mousePressEvent(e)
@@ -301,7 +263,6 @@ class Canvas(QLabel):
     def pen_mouseReleaseEvent(self, e):
         self.generic_mouseReleaseEvent(e)
 
-    # Brush events
 
     def brush_mousePressEvent(self, e):
         self.generic_mousePressEvent(e)
@@ -318,7 +279,6 @@ class Canvas(QLabel):
     def brush_mouseReleaseEvent(self, e):
         self.generic_mouseReleaseEvent(e)
 
-    # Spray events
 
     def spray_mousePressEvent(self, e):
         self.generic_mousePressEvent(e)
@@ -338,7 +298,6 @@ class Canvas(QLabel):
     def spray_mouseReleaseEvent(self, e):
         self.generic_mouseReleaseEvent(e)
 
-    # Text events
 
     def keyPressEvent(self, e):
         if self.mode == 'text':
@@ -356,7 +315,6 @@ class Canvas(QLabel):
         elif e.button() == Qt.LeftButton:
 
             self.timer_cleanup()
-            # Draw the text to the image
             p = QPainter(self.pixmap())
             p.setRenderHints(QPainter.Antialiasing)
             font = build_font(self.config)
@@ -390,28 +348,21 @@ class Canvas(QLabel):
         self.last_config = self.config.copy()
         self.update()
 
-    # Fill events
-
     def fill_mousePressEvent(self, e):
 
         if e.button() == Qt.LeftButton:
             self.active_color = self.primary_color
         else:
             self.active_color = self.secondary_color
-
-        # Convert to image for pixel-by-pixel reading.
+            
         image = self.pixmap().toImage()
         w, h = image.width(), image.height()
         s = image.bits().asstring(w * h * 4)
 
         x, y = e.x(), e.y()
-        # Lookup the 3-byte value at our current location.
         i = (x + (y * w)) * 4
         target_color = s[i:i+3]
 
-        # Convert bytestring to 1byte pp. true/false for matching colour. True values
-        # will be 255, non-matching 0. Simplifies the lookup in get_pixel and
-        # comparison in the main loop giving slight performance increase.
         s = b''.join(b'\xff' if s[n:n+3] == target_color else b'\x00' for n in range(0, len(s), 4))
 
         def get_pixel(x, y):
@@ -438,18 +389,16 @@ class Canvas(QLabel):
 
         while queue:
             x, y = queue.pop()
-            if get_pixel(x, y):  # 255 for a match (True) or 0 for a miss (False)
+            if get_pixel(x, y):  
                 to_fill.append((x,y))
                 queue.extend(get_cardinal_points(have_seen, (x, y)))
 
         if to_fill:
-            # Now we have the points, perform the fill.
             p = QPainter(self.pixmap())
             p.setPen(QPen(self.active_color))
             p.drawPoints(*[QPoint(*xy) for xy in to_fill])
             self.update()
 
-    # Dropper events
 
     def dropper_mousePressEvent(self, e):
         c = self.pixmap().toImage().pixel(e.pos())
@@ -457,13 +406,12 @@ class Canvas(QLabel):
 
         if e.button() == Qt.LeftButton:
             self.set_primary_color(hex)
-            self.primary_color_updated.emit(hex)  # Update UI.
+            self.primary_color_updated.emit(hex) 
 
         elif e.button() == Qt.RightButton:
             self.set_secondary_color(hex)
-            self.secondary_color_updated.emit(hex)  # Update UI.
+            self.secondary_color_updated.emit(hex)  
 
-    # Generic shape events: Rectangle, Ellipse, Rounded-rect
 
     def generic_shape_mousePressEvent(self, e):
         self.origin_pos = e.pos()
@@ -493,7 +441,6 @@ class Canvas(QLabel):
 
     def generic_shape_mouseReleaseEvent(self, e):
         if self.last_pos:
-            # Clear up indicator.
             self.timer_cleanup()
 
             p = QPainter(self.pixmap())
@@ -505,8 +452,6 @@ class Canvas(QLabel):
             self.update()
 
         self.reset_mode()
-
-    # Line events
 
     def line_mousePressEvent(self, e):
         self.origin_pos = e.pos()
@@ -533,7 +478,6 @@ class Canvas(QLabel):
 
     def line_mouseReleaseEvent(self, e):
         if self.last_pos:
-            # Clear up indicator.
             self.timer_cleanup()
 
             p = QPainter(self.pixmap())
@@ -544,7 +488,6 @@ class Canvas(QLabel):
 
         self.reset_mode()
 
-    # Generic poly events
     def generic_poly_mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
             if self.history_pos:
@@ -555,7 +498,6 @@ class Canvas(QLabel):
                 self.timer_event = self.generic_poly_timerEvent
 
         elif e.button() == Qt.RightButton and self.history_pos:
-            # Clean up, we're not drawing
             self.timer_cleanup()
             self.reset_mode()
 
@@ -586,15 +528,12 @@ class Canvas(QLabel):
         p = QPainter(self.pixmap())
         p.setPen(QPen(self.primary_color, self.config['size'], Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
 
-        # Note the brush is ignored for polylines.
         if self.secondary_color:
             p.setBrush(QBrush(self.secondary_color))
 
         getattr(p, self.active_shape_fn)(*self.history_pos + [e.pos()])
         self.update()
         self.reset_mode()
-
-    # Polyline events
 
     def polyline_mousePressEvent(self, e):
         self.active_shape_fn = 'drawPolyline'
@@ -610,7 +549,6 @@ class Canvas(QLabel):
     def polyline_mouseDoubleClickEvent(self, e):
         self.generic_poly_mouseDoubleClickEvent(e)
 
-    # Rectangle events
 
     def rect_mousePressEvent(self, e):
         self.active_shape_fn = 'drawRect'
@@ -627,7 +565,6 @@ class Canvas(QLabel):
     def rect_mouseReleaseEvent(self, e):
         self.generic_shape_mouseReleaseEvent(e)
 
-    # Polygon events
 
     def polygon_mousePressEvent(self, e):
         self.active_shape_fn = 'drawPolygon'
@@ -643,7 +580,6 @@ class Canvas(QLabel):
     def polygon_mouseDoubleClickEvent(self, e):
         self.generic_poly_mouseDoubleClickEvent(e)
 
-    # Ellipse events
 
     def ellipse_mousePressEvent(self, e):
         self.active_shape_fn = 'drawEllipse'
@@ -660,7 +596,6 @@ class Canvas(QLabel):
     def ellipse_mouseReleaseEvent(self, e):
         self.generic_shape_mouseReleaseEvent(e)
 
-    # Roundedrect events
 
     def roundrect_mousePressEvent(self, e):
         self.active_shape_fn = 'drawRoundedRect'
@@ -684,17 +619,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setupUi(self)
 
-        # Replace canvas placeholder from QtDesigner.
         self.horizontalLayout.removeWidget(self.canvas)
         self.canvas = Canvas()
         self.canvas.initialize()
-        # We need to enable mouse tracking to follow the mouse without the button pressed.
         self.canvas.setMouseTracking(True)
-        # Enable focus to capture key inputs.
         self.canvas.setFocusPolicy(Qt.StrongFocus)
         self.horizontalLayout.addWidget(self.canvas)
 
-        # Setup the mode buttons
         mode_group = QButtonGroup(self)
         mode_group.setExclusive(True)
 
@@ -703,15 +634,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             btn.pressed.connect(lambda mode=mode: self.canvas.set_mode(mode))
             mode_group.addButton(btn)
 
-        # Setup the color selection buttons.
         self.primaryButton.pressed.connect(lambda: self.choose_color(self.set_primary_color))
         self.secondaryButton.pressed.connect(lambda: self.choose_color(self.set_secondary_color))
 
-        # Initialize button colours.
         for n, hex in enumerate(COLORS, 1):
             btn = getattr(self, 'colorButton_%d' % n)
             btn.setStyleSheet('QPushButton { background-color: %s; }' % hex)
-            btn.hex = hex  # For use in the event below
+            btn.hex = hex  
 
             def patch_mousePressEvent(self_, e):
                 if e.button() == Qt.LeftButton:
@@ -722,29 +651,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             btn.mousePressEvent = types.MethodType(patch_mousePressEvent, btn)
 
-        # Setup up action signals
         self.actionCopy.triggered.connect(self.copy_to_clipboard)
 
-        # Initialize animation timer.
         self.timer = QTimer()
         self.timer.timeout.connect(self.canvas.on_timer)
         self.timer.setInterval(100)
         self.timer.start()
 
-        # Setup to agree with Canvas.
         self.set_primary_color('#000000')
         self.set_secondary_color('#ffffff')
 
-        # Signals for canvas-initiated color changes (dropper).
         self.canvas.primary_color_updated.connect(self.set_primary_color)
         self.canvas.secondary_color_updated.connect(self.set_secondary_color)
 
-        # Setup the stamp state.
         self.current_stamp_n = -1
         self.next_stamp()
         self.stampnextButton.pressed.connect(self.next_stamp)
 
-        # Menu options
         self.actionNewImage.triggered.connect(self.canvas.initialize)
         self.actionOpenImage.triggered.connect(self.open_file)
         self.actionSaveImage.triggered.connect(self.save_file)
@@ -753,7 +676,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionFlipHorizontal.triggered.connect(self.flip_horizontal)
         self.actionFlipVertical.triggered.connect(self.flip_vertical)
 
-        # Setup the drawing toolbar.
         self.fontselect = QFontComboBox()
         self.fontToolbar.addWidget(self.fontselect)
         self.fontselect.currentFontChanged.connect(lambda f: self.canvas.set_config('font', f))
@@ -763,8 +685,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.fontsize.addItems([str(s) for s in FONT_SIZES])
         self.fontsize.currentTextChanged.connect(lambda f: self.canvas.set_config('fontsize', int(f)))
 
-        # Connect to the signal producing the text of the current selection. Convert the string to float
-        # and set as the pointsize. We could also use the index + retrieve from FONT_SIZES.
         self.fontToolbar.addWidget(self.fontsize)
 
         self.fontToolbar.addAction(self.actionBold)
@@ -825,31 +745,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             clipboard.setPixmap(self.canvas.pixmap())
 
     def open_file(self):
-        """
-        Open image file for editing, scaling the smaller dimension and cropping the remainder.
-        :return:
-        """
         path, _ = QFileDialog.getOpenFileName(self, "Open file", "", "PNG image files (*.png); JPEG image files (*jpg); All files (*.*)")
 
         if path:
             pixmap = QPixmap()
             pixmap.load(path)
 
-            # We need to crop down to the size of our canvas. Get the size of the loaded image.
             iw = pixmap.width()
             ih = pixmap.height()
 
-            # Get the size of the space we're filling.
             cw, ch = CANVAS_DIMENSIONS
 
-            if iw/cw < ih/ch:  # The height is relatively bigger than the width.
+            if iw/cw < ih/ch:  
                 pixmap = pixmap.scaledToWidth(cw)
                 hoff = (pixmap.height() - ch) // 2
                 pixmap = pixmap.copy(
                     QRect(QPoint(0, hoff), QPoint(cw, pixmap.height()-hoff))
                 )
 
-            elif iw/cw > ih/ch:  # The height is relatively bigger than the width.
+            elif iw/cw > ih/ch: 
                 pixmap = pixmap.scaledToHeight(ch)
                 woff = (pixmap.width() - cw) // 2
                 pixmap = pixmap.copy(
@@ -860,10 +774,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
     def save_file(self):
-        """
-        Save active canvas to image file.
-        :return:
-        """
         path, _ = QFileDialog.getSaveFileName(self, "Save file", "", "PNG Image file (*.png)")
 
         if path:
@@ -888,7 +798,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
 if __name__ == '__main__':
-
     app = QApplication([])
     window = MainWindow()
     app.exec_()
